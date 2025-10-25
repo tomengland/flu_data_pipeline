@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.ipynb_checkpoints
+.env
+data/raw/*.csv
+data/raw/*.json
+data/processed/*.csv
+airflow/logs/
+airflow/*.db
+*.db
+.DS_Store
+.vscode/
