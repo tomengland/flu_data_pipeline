@@ -63,6 +63,11 @@ def viewer():
                     background: #667eea; color: white; border: none;
                     border-radius: 5px; margin: 5px; transition: background 0.3s; }
             button:hover { background: #5568d3; }
+            .export-section { background: white; padding: 20px; border-radius: 8px;
+                            margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .export-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+            .export-btn { background: #27ae60; padding: 10px 20px; }
+            .export-btn:hover { background: #229954; }
             .results { background: white; padding: 20px; border-radius: 8px;
                       margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
             table { border-collapse: collapse; width: 100%; margin: 10px 0; }
@@ -71,6 +76,7 @@ def viewer():
             tr:nth-child(even) { background-color: #f9f9f9; }
             tr:hover { background-color: #f0f0f0; }
             h2 { color: #333; margin-top: 0; }
+            h3 { color: #667eea; margin-bottom: 10px; }
             .error { color: #e74c3c; padding: 20px; background: #fadbd8;
                     border-radius: 5px; }
             .loading { text-align: center; padding: 40px; color: #666; }
@@ -86,6 +92,18 @@ def viewer():
                 <p>Comprehensive flu surveillance and healthcare impact analysis</p>
             </div>
 
+            <div class="export-section">
+                <h3>📥 Export Data Tables (CSV)</h3>
+                <p>Download raw data tables for further analysis</p>
+                <div class="export-buttons">
+                    <button class="export-btn" onclick="exportCSV('county_region')">📍 County Region</button>
+                    <button class="export-btn" onclick="exportCSV('temporal')">📅 Temporal</button>
+                    <button class="export-btn" onclick="exportCSV('illness')">🦠 Illness Data</button>
+                    <button class="export-btn" onclick="exportCSV('healthcare')">🏥 Healthcare</button>
+                    <button class="export-btn" onclick="exportCSV('historics')">📊 Historical</button>
+                </div>
+            </div>
+
             <div class="report-grid">
                 <div class="report-card" onclick="loadReport('weekly-trends')">
                     <h3>📈 Weekly Trends</h3>
@@ -94,10 +112,6 @@ def viewer():
                 <div class="report-card" onclick="loadReport('county-summary')">
                     <h3>🗺️ County Summary</h3>
                     <p>Flu statistics by geographic region</p>
-                </div>
-                <div class="report-card" onclick="loadReport('seasonal-comparison')">
-                    <h3>📅 Seasonal Comparison</h3>
-                    <p>Compare flu seasons year over year</p>
                 </div>
                 <div class="report-card" onclick="loadReport('healthcare-impact')">
                     <h3>🏨 Healthcare Impact</h3>
@@ -117,6 +131,10 @@ def viewer():
         </div>
 
         <script>
+            function exportCSV(tableName) {
+                window.location.href = `/api/export/csv?table=${tableName}`;
+            }
+
             async function loadReport(reportType) {
                 const resultsDiv = document.getElementById('results');
                 resultsDiv.innerHTML = '<div class="loading">📊 Loading report...</div>';
@@ -207,6 +225,7 @@ def viewer():
     '''
     return render_template_string(html)
 
+
 @app.route('/api/reports/weekly-trends')
 def weekly_trends():
     """Get weekly flu activity trends"""
@@ -216,27 +235,37 @@ def weekly_trends():
                 t.week_end,
                 t.epiweek_id,
                 t.season,
+                i.respiratory_illness_type,
                 AVG(i.county_ili_percent) as avg_percent_positive,
-                AVG(i.state_ili_percent) as state_avg_percent,
                 COUNT(DISTINCT i.county_id) as counties_reporting
             FROM temporal t
             LEFT JOIN illness i ON t.epiweek_id = i.epiweek_id
-            WHERE i.respiratory_illness_type = 'Flu'
-            GROUP BY t.week_end, t.epiweek_id, t.season
-            ORDER BY t.week_end DESC
+            WHERE i.respiratory_illness_type IS NOT NULL
+            GROUP BY t.week_end, t.epiweek_id, t.season, i.respiratory_illness_type
+            HAVING AVG(i.county_ili_percent) IS NOT NULL
+            ORDER BY t.week_end DESC, i.respiratory_illness_type
             LIMIT 20
         """)
 
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = result.fetchall()
+
+            # Format the data with proper percentages
+            data = []
+            for row in rows:
+                row_dict = dict(zip(columns, row))
+                # Format percentages
+                if row_dict.get('avg_percent_positive') is not None:
+                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
+                data.append(row_dict)
 
         summary = {}
         if data:
             summary['Latest Week'] = str(data[0]['week_end']) if data[0]['week_end'] else 'N/A'
-            summary['Avg County %'] = f"{data[0]['avg_percent_positive']:.2f}%" if data[0]['avg_percent_positive'] else 'N/A'
-            summary['State Avg %'] = f"{data[0]['state_avg_percent']:.2f}%" if data[0]['state_avg_percent'] else 'N/A'
+            summary['Avg County %'] = data[0]['avg_percent_positive'] if data[0]['avg_percent_positive'] else 'N/A'
+            summary['Illness Type'] = data[0]['respiratory_illness_type']
 
         return jsonify({'data': data, 'summary': summary}), 200
     except Exception as e:
@@ -265,7 +294,19 @@ def county_summary():
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = result.fetchall()
+
+            # Format the data with proper percentages
+            data = []
+            for row in rows:
+                row_dict = dict(zip(columns, row))
+                if row_dict.get('avg_percent_positive') is not None:
+                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
+                if row_dict.get('max_percent_positive') is not None:
+                    row_dict['max_percent_positive'] = f"{row_dict['max_percent_positive']:.2f}%"
+                if row_dict.get('avg_deviation') is not None:
+                    row_dict['avg_deviation'] = f"{row_dict['avg_deviation']:.2f}%"
+                data.append(row_dict)
 
         summary = {
             'Total Counties': len(data),
@@ -297,7 +338,19 @@ def seasonal_comparison():
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = result.fetchall()
+
+            # Format the data with proper percentages
+            data = []
+            for row in rows:
+                row_dict = dict(zip(columns, row))
+                if row_dict.get('avg_percent_positive') is not None:
+                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
+                if row_dict.get('peak_percent_positive') is not None:
+                    row_dict['peak_percent_positive'] = f"{row_dict['peak_percent_positive']:.2f}%"
+                if row_dict.get('state_avg_percent') is not None:
+                    row_dict['state_avg_percent'] = f"{row_dict['state_avg_percent']:.2f}%"
+                data.append(row_dict)
 
         return jsonify({'data': data}), 200
     except Exception as e:
@@ -325,7 +378,19 @@ def healthcare_impact():
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = result.fetchall()
+
+            # Format the data with proper percentages
+            data = []
+            for row in rows:
+                row_dict = dict(zip(columns, row))
+                if row_dict.get('hospitalization_percent') is not None:
+                    row_dict['hospitalization_percent'] = f"{row_dict['hospitalization_percent']:.2f}%"
+                if row_dict.get('er_visit_percent') is not None:
+                    row_dict['er_visit_percent'] = f"{row_dict['er_visit_percent']:.2f}%"
+                if row_dict.get('hospital_to_er_ratio') is not None:
+                    row_dict['hospital_to_er_ratio'] = f"{row_dict['hospital_to_er_ratio']:.3f}"
+                data.append(row_dict)
 
         summary = {
             'Counties Analyzed': len(data)
@@ -360,11 +425,23 @@ def top_affected_counties():
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = result.fetchall()
+
+            # Format the data with proper percentages
+            data = []
+            for row in rows:
+                row_dict = dict(zip(columns, row))
+                if row_dict.get('avg_percent_positive') is not None:
+                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
+                if row_dict.get('peak_percent_positive') is not None:
+                    row_dict['peak_percent_positive'] = f"{row_dict['peak_percent_positive']:.2f}%"
+                if row_dict.get('avg_deviation') is not None:
+                    row_dict['avg_deviation'] = f"{row_dict['avg_deviation']:.2f}%"
+                data.append(row_dict)
 
         if data:
             summary = {
-                'Highest Avg %': f"{data[0]['avg_percent_positive']:.2f}%",
+                'Highest Avg': data[0]['avg_percent_positive'],
                 'Top County': data[0]['county_name']
             }
         else:
@@ -393,12 +470,26 @@ def historical_summary():
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
+            rows = result.fetchall()
+
+            # Format the data with proper percentages
+            data = []
+            for row in rows:
+                row_dict = dict(zip(columns, row))
+                if row_dict.get('peak_ili_percent') is not None:
+                    row_dict['peak_ili_percent'] = f"{row_dict['peak_ili_percent']:.2f}%"
+                if row_dict.get('average_wili_percent') is not None:
+                    row_dict['average_wili_percent'] = f"{row_dict['average_wili_percent']:.2f}%"
+                if row_dict.get('peak_vs_avg_diff') is not None:
+                    row_dict['peak_vs_avg_diff'] = f"{row_dict['peak_vs_avg_diff']:.2f}%"
+                data.append(row_dict)
 
         if data:
+            # Find max peak
+            max_peak = max((float(d['peak_ili_percent'].rstrip('%')) for d in data if d.get('peak_ili_percent')), default=0)
             summary = {
                 'Years Tracked': len(data),
-                'Highest Peak': f"{max(d['peak_ili_percent'] for d in data if d['peak_ili_percent']):.2f}%"
+                'Highest Peak': f"{max_peak:.2f}%"
             }
         else:
             summary = {}
