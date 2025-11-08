@@ -22,10 +22,7 @@ def home():
             '/health': 'Check API and database health',
             '/viewer': 'Interactive data viewer',
             '/api/reports/weekly-trends': 'Weekly flu activity trends',
-            '/api/reports/county-summary': 'Summary by county',
-            '/api/reports/seasonal-comparison': 'Compare flu seasons',
-            '/api/reports/healthcare-impact': 'Healthcare system impact',
-            '/api/reports/top-affected-counties': 'Most affected counties',
+            '/api/reports/healthcare-impact': 'Healthcare system impact by ACH region',
             '/api/reports/historical-summary': 'Historical flu season summary',
             '/api/export/csv?table=<table_name>': 'Export table data as CSV'
         }
@@ -109,17 +106,9 @@ def viewer():
                     <h3>📈 Weekly Trends</h3>
                     <p>Track flu activity patterns over time</p>
                 </div>
-                <div class="report-card" onclick="loadReport('county-summary')">
-                    <h3>🗺️ County Summary</h3>
-                    <p>Flu statistics by geographic region</p>
-                </div>
                 <div class="report-card" onclick="loadReport('healthcare-impact')">
-                    <h3>🏨 Healthcare Impact</h3>
-                    <p>Hospital capacity and utilization</p>
-                </div>
-                <div class="report-card" onclick="loadReport('top-affected-counties')">
-                    <h3>⚠️ Top Affected Counties</h3>
-                    <p>Counties with highest flu activity</p>
+                    <h3>🏨 Healthcare Impact by ACH Region</h3>
+                    <p>Hospital and ER utilization by region</p>
                 </div>
                 <div class="report-card" onclick="loadReport('historical-summary')">
                     <h3>📊 Historical Summary</h3>
@@ -186,10 +175,7 @@ def viewer():
             function getReportTitle(reportType) {
                 const titles = {
                     'weekly-trends': '📈 Weekly Flu Activity Trends',
-                    'county-summary': '🗺️ County-Level Summary Statistics',
-                    'seasonal-comparison': '📅 Seasonal Comparison Analysis',
-                    'healthcare-impact': '🏨 Healthcare System Impact',
-                    'top-affected-counties': '⚠️ Top Affected Counties',
+                    'healthcare-impact': '🏨 Healthcare Impact by ACH Region',
                     'historical-summary': '📊 Historical Flu Season Summary'
                 };
                 return titles[reportType] || reportType;
@@ -271,108 +257,23 @@ def weekly_trends():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/reports/county-summary')
-def county_summary():
-    """Get summary statistics by county"""
-    try:
-        query = text("""
-            SELECT
-                cr.county_name,
-                cr.ach_region,
-                COUNT(DISTINCT t.epiweek_id) as weeks_reporting,
-                AVG(i.county_ili_percent) as avg_percent_positive,
-                MAX(i.county_ili_percent) as max_percent_positive,
-                AVG(i.deviation_from_state_average) as avg_deviation
-            FROM county_region cr
-            LEFT JOIN illness i ON cr.county_id = i.county_id
-            LEFT JOIN temporal t ON i.epiweek_id = t.epiweek_id
-            WHERE i.respiratory_illness_type = 'Flu'
-            GROUP BY cr.county_name, cr.ach_region
-            ORDER BY avg_percent_positive DESC NULLS LAST
-        """)
-
-        with engine.connect() as conn:
-            result = conn.execute(query)
-            columns = result.keys()
-            rows = result.fetchall()
-
-            # Format the data with proper percentages
-            data = []
-            for row in rows:
-                row_dict = dict(zip(columns, row))
-                if row_dict.get('avg_percent_positive') is not None:
-                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
-                if row_dict.get('max_percent_positive') is not None:
-                    row_dict['max_percent_positive'] = f"{row_dict['max_percent_positive']:.2f}%"
-                if row_dict.get('avg_deviation') is not None:
-                    row_dict['avg_deviation'] = f"{row_dict['avg_deviation']:.2f}%"
-                data.append(row_dict)
-
-        summary = {
-            'Total Counties': len(data),
-            'Reporting Counties': sum(1 for d in data if d['weeks_reporting'] > 0)
-        }
-
-        return jsonify({'data': data, 'summary': summary}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/reports/seasonal-comparison')
-def seasonal_comparison():
-    """Compare flu seasons"""
-    try:
-        query = text("""
-            SELECT
-                t.season,
-                COUNT(DISTINCT t.epiweek_id) as weeks_in_season,
-                AVG(i.county_ili_percent) as avg_percent_positive,
-                MAX(i.county_ili_percent) as peak_percent_positive,
-                AVG(i.state_ili_percent) as state_avg_percent
-            FROM temporal t
-            LEFT JOIN illness i ON t.epiweek_id = i.epiweek_id
-            WHERE t.season IS NOT NULL AND i.respiratory_illness_type = 'Flu'
-            GROUP BY t.season
-            ORDER BY t.season DESC
-        """)
-
-        with engine.connect() as conn:
-            result = conn.execute(query)
-            columns = result.keys()
-            rows = result.fetchall()
-
-            # Format the data with proper percentages
-            data = []
-            for row in rows:
-                row_dict = dict(zip(columns, row))
-                if row_dict.get('avg_percent_positive') is not None:
-                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
-                if row_dict.get('peak_percent_positive') is not None:
-                    row_dict['peak_percent_positive'] = f"{row_dict['peak_percent_positive']:.2f}%"
-                if row_dict.get('state_avg_percent') is not None:
-                    row_dict['state_avg_percent'] = f"{row_dict['state_avg_percent']:.2f}%"
-                data.append(row_dict)
-
-        return jsonify({'data': data}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/reports/healthcare-impact')
 def healthcare_impact():
-    """Healthcare system impact metrics"""
+    """Healthcare system impact metrics grouped by ACH region"""
     try:
         query = text("""
             SELECT
-                cr.county_name,
                 cr.ach_region,
-                h.population_density_2020,
-                h.hospitalization_percent,
-                h.er_visit_percent,
-                h.hospital_to_er_ratio
+                COUNT(DISTINCT cr.county_id) as counties_in_region,
+                AVG(h.population_density_2020) as avg_population_density,
+                AVG(h.hospitalization_percent) as avg_hospitalization_percent,
+                AVG(h.er_visit_percent) as avg_er_visit_percent,
+                AVG(h.hospital_to_er_ratio) as avg_hospital_to_er_ratio
             FROM healthcare h
             JOIN county_region cr ON h.county_id = cr.county_id
             WHERE h.hospitalization_percent > 0 OR h.er_visit_percent > 0
-            ORDER BY h.hospitalization_percent DESC NULLS LAST
-            LIMIT 30
+            GROUP BY cr.ach_region
+            ORDER BY avg_hospitalization_percent DESC NULLS LAST
         """)
 
         with engine.connect() as conn:
@@ -384,68 +285,20 @@ def healthcare_impact():
             data = []
             for row in rows:
                 row_dict = dict(zip(columns, row))
-                if row_dict.get('hospitalization_percent') is not None:
-                    row_dict['hospitalization_percent'] = f"{row_dict['hospitalization_percent']:.2f}%"
-                if row_dict.get('er_visit_percent') is not None:
-                    row_dict['er_visit_percent'] = f"{row_dict['er_visit_percent']:.2f}%"
-                if row_dict.get('hospital_to_er_ratio') is not None:
-                    row_dict['hospital_to_er_ratio'] = f"{row_dict['hospital_to_er_ratio']:.3f}"
+                if row_dict.get('avg_hospitalization_percent') is not None:
+                    row_dict['avg_hospitalization_percent'] = f"{row_dict['avg_hospitalization_percent']:.2f}%"
+                if row_dict.get('avg_er_visit_percent') is not None:
+                    row_dict['avg_er_visit_percent'] = f"{row_dict['avg_er_visit_percent']:.2f}%"
+                if row_dict.get('avg_hospital_to_er_ratio') is not None:
+                    row_dict['avg_hospital_to_er_ratio'] = f"{row_dict['avg_hospital_to_er_ratio']:.3f}"
+                if row_dict.get('avg_population_density') is not None:
+                    row_dict['avg_population_density'] = f"{row_dict['avg_population_density']:.1f}"
                 data.append(row_dict)
 
         summary = {
-            'Counties Analyzed': len(data)
+            'ACH Regions': len(data),
+            'Total Counties': sum(d['counties_in_region'] for d in data if d.get('counties_in_region'))
         }
-
-        return jsonify({'data': data, 'summary': summary}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/reports/top-affected-counties')
-def top_affected_counties():
-    """Get top affected counties by flu activity"""
-    try:
-        query = text("""
-            SELECT
-                cr.county_name,
-                cr.ach_region,
-                AVG(i.county_ili_percent) as avg_percent_positive,
-                MAX(i.county_ili_percent) as peak_percent_positive,
-                AVG(i.deviation_from_state_average) as avg_deviation,
-                COUNT(DISTINCT t.epiweek_id) as weeks_reporting
-            FROM county_region cr
-            JOIN illness i ON cr.county_id = i.county_id
-            JOIN temporal t ON i.epiweek_id = t.epiweek_id
-            WHERE i.respiratory_illness_type = 'Flu' AND i.care_type = 'Hospitalizations'
-            GROUP BY cr.county_name, cr.ach_region
-            HAVING AVG(i.county_ili_percent) IS NOT NULL
-            ORDER BY avg_percent_positive DESC
-            LIMIT 15
-        """)
-
-        with engine.connect() as conn:
-            result = conn.execute(query)
-            columns = result.keys()
-            rows = result.fetchall()
-
-            # Format the data with proper percentages
-            data = []
-            for row in rows:
-                row_dict = dict(zip(columns, row))
-                if row_dict.get('avg_percent_positive') is not None:
-                    row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
-                if row_dict.get('peak_percent_positive') is not None:
-                    row_dict['peak_percent_positive'] = f"{row_dict['peak_percent_positive']:.2f}%"
-                if row_dict.get('avg_deviation') is not None:
-                    row_dict['avg_deviation'] = f"{row_dict['avg_deviation']:.2f}%"
-                data.append(row_dict)
-
-        if data:
-            summary = {
-                'Highest Avg': data[0]['avg_percent_positive'],
-                'Top County': data[0]['county_name']
-            }
-        else:
-            summary = {}
 
         return jsonify({'data': data, 'summary': summary}), 200
     except Exception as e:

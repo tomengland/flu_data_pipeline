@@ -1,22 +1,229 @@
-# Flu Data Pipeline - Washington State
+# Washington State Flu Data Pipeline
+
+A comprehensive data pipeline for collecting, analyzing, and visualizing flu surveillance data from Washington State Department of Health (DOH) and CDC sources.
 
 ## Quick Start
 
-1. Make sure Docker Desktop is running
-2. Open PowerShell in this folder
-3. Run: `docker-compose up -d --build`
-4. Access services:
-   - JupyterLab: http://localhost:8888
-   - Flask API: http://localhost:5000
-   - PostgreSQL: localhost:5432
-
-## Docker Modifcations/Additions (Andrew Fuerst)
-Modified JupyterLab access token to interact w/ VS Code. URL would be unchanged. Added Token: flutoken
-http://localhost:8888/?token=flutoken should work if the original does not
-Also disabled token check which was causing errors connecting to environment in VS Code
-Change local port for Flask to 5001:5000 to solve conflict on my host machine. If this causes issues with your machines, we can change back or change to 0 to select any available. 
-
-
-## Stop Services
+### 1. Start Docker Services
 ```bash
+docker-compose up -d
+```
+
+This starts:
+- PostgreSQL database (port 5432)
+- Jupyter Notebook (port 8888)
+- Flask API Dashboard (port 5001)
+
+### 2. Run Data Collection
+
+#### Access Jupyter Notebook
+```bash
+# Get the Jupyter access token
+docker-compose logs jupyter | grep "http://127.0.0.1:8888/lab?token="
+
+# Open Jupyter in browser (copy the URL from above)
+"$BROWSER" http://localhost:8888/lab?token=<your-token>
+```
+
+#### Run the Pipeline
+1. Navigate to `notebooks/collect_data.ipynb`
+2. Click **Run → Run All Cells** (or press Shift+Enter through each cell)
+3. Wait for all cells to complete (~2-3 minutes)
+
+**That's it!** The notebook will:
+- ✅ Download WA DOH RHINO data
+- ✅ Download Census population data
+- ✅ Download CDC FluView data
+- ✅ Clean and transform the data
+- ✅ Create PostgreSQL database tables
+- ✅ Load all data into the database
+
+### 3. View the Dashboard
+
+```bash
+"$BROWSER" http://localhost:5001/viewer
+```
+
+The dashboard provides:
+- 📈 **Weekly Trends**: Real-time flu activity by week
+- 🏨 **Healthcare Impact**: Hospital utilization metrics
+- 📊 **Historical Summary**: Long-term flu patterns
+
+## Project Architecture
+
+```
+┌─────────────────┐
+│  Data Sources   │
+│  - WA DOH RHINO │
+│  - Census Data  │
+│  - CDC FluView  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Jupyter Notebook│  ← Run collect_data.ipynb
+│  Data Pipeline  │     (All cells in order)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   PostgreSQL    │  ← Stores 5 normalized tables
+│    Database     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Flask API     │  ← Interactive dashboard
+│   + Dashboard   │     + CSV exports
+└─────────────────┘
+```
+
+## Database Schema
+
+### Tables Created
+1. **county_region**: County names, ACH regions, population density
+2. **temporal**: Week dates, epiweeks, flu seasons
+3. **illness**: County-level flu metrics by week
+4. **healthcare**: Hospital and ER utilization rates
+5. **historics**: Historical CDC flu season data
+
+## Common Tasks
+
+### View API Health
+```bash
+curl http://localhost:5001/health
+```
+
+### Export Data to CSV
+From the dashboard, click the green export buttons, or:
+```bash
+curl "http://localhost:5001/api/export/csv?table=illness" -o illness.csv
+curl "http://localhost:5001/api/export/csv?table=county_region" -o counties.csv
+curl "http://localhost:5001/api/export/csv?table=temporal" -o weeks.csv
+curl "http://localhost:5001/api/export/csv?table=healthcare" -o healthcare.csv
+curl "http://localhost:5001/api/export/csv?table=historics" -o historical.csv
+```
+
+### Restart Services
+```bash
+# Restart all
+docker-compose restart
+
+# Restart specific service
+docker-compose restart flask-api
+```
+
+### Stop Everything
+```bash
+# Stop services (keeps data)
+docker-compose stop
+
+# Stop and remove containers (keeps data in volumes)
 docker-compose down
+
+# Remove everything including data
+docker-compose down -v
+```
+
+## Updating Data
+
+To refresh the data with latest information:
+
+1. **Open Jupyter Notebook** (see Quick Start step 2)
+2. **Run All Cells** in `collect_data.ipynb`
+3. The notebook will automatically:
+   - Download latest data from sources
+   - Drop existing tables
+   - Recreate tables with new data
+   - Commit changes to database
+4. **Refresh the dashboard** - new data appears immediately
+
+## Troubleshooting
+
+### ❌ "No data available" in Dashboard
+
+**Solution**: Run the Jupyter notebook
+```bash
+"$BROWSER" http://localhost:8888
+# Then run all cells in collect_data.ipynb
+```
+
+### ❌ "relation does not exist" Error
+
+**Cause**: Database tables not created yet
+
+**Solution**: Run all cells in the Jupyter notebook, especially the cells that:
+1. Create tables (with `CREATE TABLE` statements)
+2. Load data (with `COPY` statements)
+3. Commit changes (with `conn.commit()`)
+
+### ❌ Jupyter Token Not Working
+
+```bash
+# Get fresh token
+docker-compose logs jupyter | grep token
+
+# Or restart Jupyter
+docker-compose restart jupyter
+```
+
+### ❌ Port Already in Use
+
+```bash
+# Check what's using port 5001
+netstat -an | grep 5001
+
+# Change port in docker-compose.yml if needed:
+# ports:
+#   - "5002:5000"  # Use 5002 instead
+```
+
+## Data Sources
+
+- **WA DOH RHINO**: Washington State respiratory illness surveillance
+  - URL: https://doh.wa.gov/data-statistical-reports/diseases-and-chronic-conditions/communicable-disease-surveillance-data/respiratory-illness-data-dashboard
+
+- **Census Data**: WA county population density
+  - URL: https://data.wa.gov/Demographics/Population-Density-By-County-2000-2020/e6ip-wkqq
+
+- **CDC FluView**: National flu surveillance data
+  - API: https://api.delphi.cmu.edu/epidata/fluview/
+
+## API Endpoints
+
+| Endpoint                              | Description               |
+| ------------------------------------- | ------------------------- |
+| `GET /`                               | API information           |
+| `GET /health`                         | Database health check     |
+| `GET /viewer`                         | Interactive dashboard     |
+| `GET /api/reports/weekly-trends`      | Weekly flu data (JSON)    |
+| `GET /api/reports/healthcare-impact`  | Healthcare metrics (JSON) |
+| `GET /api/reports/historical-summary` | Historical data (JSON)    |
+| `GET /api/export/csv?table=<name>`    | Export table as CSV       |
+
+## System Requirements
+
+- **Docker**: 20.10+
+- **Docker Compose**: 2.0+
+- **RAM**: 4GB minimum (8GB recommended)
+- **Disk Space**: 2GB for images and data
+
+## Database Credentials
+
+Default credentials (configurable in `docker-compose.yml`):
+```
+Host: localhost (postgres in container network)
+Port: 5432
+Database: flu_database
+Username: fluuser
+Password: flupass
+```
+
+
+## License
+
+This project is for educational and public health surveillance purposes.
+
+---
+
+**Getting Started**: Run `docker-compose up -d`, then run all cells in the Jupyter notebook!
