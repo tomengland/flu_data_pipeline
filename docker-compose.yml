@@ -39,8 +39,8 @@ services:
       - POSTGRES_USER=fluuser
       - POSTGRES_PASSWORD=flupass
       - POSTGRES_DB=flu_database
-      - AIRFLOW_HOME=/apps/airflow
-      - AIRFLOW__CORE__DAGS_FOLDER = /apps/airflow/dags
+      - AIRFLOW_HOME=/app/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
     depends_on:
       postgres:
         condition: service_healthy
