@@ -17,9 +17,9 @@ markdown==3.4.4
 requests==2.31.0
 flask==2.2.5
 flask-cors==4.0.0
-#Flask-AppBuilder==4.3.6
+Flask-AppBuilder==4.3.6
 werkzeug==2.2.3
-pendulum==3.1.0
+pendulum==2.1.2
 
 
 # Visualization
