@@ -49,6 +49,30 @@ The dashboard provides:
 - 🏨 **Healthcare Impact**: Hospital utilization metrics
 - 📊 **Historical Summary**: Long-term flu patterns
 
+### 4. Initialize and Access Airflow for Automation
+
+1. Initialize Airflow DB
+   ```bash
+   docker exec -it <flu_jupyter container id> airflow db init
+   ```
+
+2. Start Webserver
+   
+   ```bash
+   docker exec -it <flu_jupyter container id> airflow webserver
+   ```
+3. Start Scheduler
+   
+   ```bash
+    docker exec -it <flu_jupyter container id> airflow scheduler
+   ```
+4. Log-In to Airflow
+   
+   Go to: http://localhost:8080
+   
+   username: admin / password: admin
+   
+
 ## Project Architecture
 
 ```
@@ -176,6 +200,22 @@ netstat -an | grep 5001
 # Change port in docker-compose.yml if needed:
 # ports:
 #   - "5002:5000"  # Use 5002 instead
+```
+
+### ❌ Airflow Log-In Error
+
+```bash
+# Remove any other admin User
+docker exec -it <flu_jupyter container id> airflow users delete -u admin
+
+# Recreate Admin User
+docker exec -it <flu_jupyter container id> airflow users create \
+        --username admin \
+        --firstname Admin \
+        --lastname User \
+        --role Admin \
+        --email admin@example.com \
+        --password admin
 ```
 
 ## Data Sources
