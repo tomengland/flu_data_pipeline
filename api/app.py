@@ -220,7 +220,6 @@ def weekly_trends():
             SELECT
                 t.week_end,
                 t.epiweek_id,
-                t.season,
                 i.respiratory_illness_type,
                 AVG(i.county_ili_percent) as avg_percent_positive,
                 COUNT(DISTINCT i.county_id) as counties_reporting
