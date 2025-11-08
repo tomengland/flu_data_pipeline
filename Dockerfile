@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/data/raw /app/data/processed /app/outputs/erd /app/logs
+RUN mkdir -p /app/data/raw /app/data/processed /app/outputs/erd /app/logs /app/dags
 
 ENV PYTHONUNBUFFERED=1
 ENV AIRFLOW_HOME=/app/airflow
