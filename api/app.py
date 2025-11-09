@@ -223,8 +223,8 @@ def weekly_trends():
                 i.respiratory_illness_type,
                 AVG(i.county_ili_percent) as avg_percent_positive,
                 COUNT(DISTINCT i.county_id) as counties_reporting
-            FROM temporal t
-            LEFT JOIN illness i ON t.epiweek_id = i.epiweek_id
+            FROM flu_schema.temporal t
+            LEFT JOIN flu_schema.illness i ON t.epiweek_id = i.epiweek_id
             WHERE i.respiratory_illness_type IS NOT NULL
             GROUP BY t.week_end, t.epiweek_id, t.season, i.respiratory_illness_type
             HAVING AVG(i.county_ili_percent) IS NOT NULL
@@ -237,11 +237,9 @@ def weekly_trends():
             columns = result.keys()
             rows = result.fetchall()
 
-            # Format the data with proper percentages
             data = []
             for row in rows:
                 row_dict = dict(zip(columns, row))
-                # Format percentages
                 if row_dict.get('avg_percent_positive') is not None:
                     row_dict['avg_percent_positive'] = f"{row_dict['avg_percent_positive']:.2f}%"
                 data.append(row_dict)
@@ -268,8 +266,8 @@ def healthcare_impact():
                 AVG(h.hospitalization_percent) as avg_hospitalization_percent,
                 AVG(h.er_visit_percent) as avg_er_visit_percent,
                 AVG(h.hospital_to_er_ratio) as avg_hospital_to_er_ratio
-            FROM healthcare h
-            JOIN county_region cr ON h.county_id = cr.county_id
+            FROM flu_schema.healthcare h
+            JOIN flu_schema.county_region cr ON h.county_id = cr.county_id
             WHERE h.hospitalization_percent > 0 OR h.er_visit_percent > 0
             GROUP BY cr.ach_region
             ORDER BY avg_hospitalization_percent DESC NULLS LAST
@@ -280,7 +278,6 @@ def healthcare_impact():
             columns = result.keys()
             rows = result.fetchall()
 
-            # Format the data with proper percentages
             data = []
             for row in rows:
                 row_dict = dict(zip(columns, row))
@@ -315,7 +312,7 @@ def historical_summary():
                 peak_ili_percent,
                 average_wili_percent,
                 peak_vs_avg_diff
-            FROM historics
+            FROM flu_schema.historics
             ORDER BY year DESC
         """)
 
@@ -324,7 +321,6 @@ def historical_summary():
             columns = result.keys()
             rows = result.fetchall()
 
-            # Format the data with proper percentages
             data = []
             for row in rows:
                 row_dict = dict(zip(columns, row))
@@ -337,7 +333,6 @@ def historical_summary():
                 data.append(row_dict)
 
         if data:
-            # Find max peak
             max_peak = max((float(d['peak_ili_percent'].rstrip('%')) for d in data if d.get('peak_ili_percent')), default=0)
             summary = {
                 'Years Tracked': len(data),
@@ -360,14 +355,13 @@ def export_csv():
         return jsonify({'error': f'Invalid table. Choose from: {", ".join(valid_tables)}'}), 400
 
     try:
-        query = text(f"SELECT * FROM {table} LIMIT 1000")
+        query = text(f"SELECT * FROM flu_schema.{table} LIMIT 1000")
 
         with engine.connect() as conn:
             result = conn.execute(query)
             columns = result.keys()
             rows = result.fetchall()
 
-        # Create CSV in memory
         output = StringIO()
         writer = csv.writer(output)
         writer.writerow(columns)
