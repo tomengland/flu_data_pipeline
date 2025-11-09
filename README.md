@@ -38,7 +38,34 @@ docker-compose logs jupyter | grep "http://127.0.0.1:8888/lab?token="
 - ✅ Create PostgreSQL database tables
 - ✅ Load all data into the database
 
-### 3. View the Dashboard
+### 3. Initialize and Access Airflow for Automation
+
+A. Initialize Airflow DB
+   ```bash
+   docker exec -it <flu_jupyter container id> airflow db init
+   ```
+
+B. Start Webserver
+   
+   ```bash
+   docker exec -it <flu_jupyter container id> airflow webserver
+   ```
+C. Start Scheduler
+   
+   ```bash
+    docker exec -it <flu_jupyter container id> airflow scheduler
+   ```
+D. Log-In to Airflow
+   
+   Go to: http://localhost:8080
+   
+   username: admin / password: admin
+
+   The desired Airflow DAG is flu_data_airflow v2.py
+
+E. Airflow will automate the entire data pipeline from start to finish and is designed to execute another pull Daily or as otherwise specified in the .py file.  
+
+### 4. View the Dashboard
 
 ```bash
 "$BROWSER" http://localhost:5001/viewer
@@ -49,7 +76,7 @@ The dashboard provides:
 - 🏨 **Healthcare Impact**: Hospital utilization metrics
 - 📊 **Historical Summary**: Long-term flu patterns
 
-### 4. Initialize and Access Airflow for Automation
+### 3. Initialize and Access Airflow for Automation
 
 1. Initialize Airflow DB
    ```bash
@@ -101,6 +128,10 @@ The dashboard provides:
 │   + Dashboard   │     + CSV exports
 └─────────────────┘
 ```
+
+## Airflow DAG Architecture
+
+<img width="1180" height="586" alt="DAG Screenshot" src="https://github.com/user-attachments/assets/0d8fb830-5742-4272-9444-496c87ae86a1" />
 
 ## Database Schema
 
