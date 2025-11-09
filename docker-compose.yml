@@ -25,16 +25,17 @@ services:
     container_name: flu_jupyter
     command: >
       bash -c "
+        echo 'Initializing Airflow DB...' &&
         airflow db init &&
-        airflow users create \
-          --username admin \
-          --firstname Admin \
-          --lastname User \
-          --role Admin \
-          --email admin@example.com \
-          --password admin 2>/dev/null || echo 'Admin user already exists' &&
+        echo 'Waiting for DB to be ready...' &&
+        sleep 10 &&
+        echo 'Creating admin user...' &&
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin && echo 'Admin user created successfully!' || echo 'Admin user creation failed or already exists' &&
+        echo 'Starting Airflow webserver...' &&
         airflow webserver --port 8080 &
+        echo 'Starting Airflow scheduler...' &&
         airflow scheduler &
+        echo 'Starting Jupyter Lab...' &&
         jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=flutoken --NotebookApp.allow_origin='*' --NotebookApp.disable_check_xsrf=True
       "
     ports:
@@ -51,6 +52,7 @@ services:
       - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://fluuser:flupass@postgres:5432/flu_database
+      - AIRFLOW__WEBSERVER__SECRET_KEY=flu_data_pipeline_2025
     depends_on:
       postgres:
         condition: service_healthy
