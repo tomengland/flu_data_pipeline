@@ -76,30 +76,6 @@ The dashboard provides:
 - 🏨 **Healthcare Impact**: Hospital utilization metrics
 - 📊 **Historical Summary**: Long-term flu patterns
 
-### 3. Initialize and Access Airflow for Automation
-
-1. Initialize Airflow DB
-   ```bash
-   docker exec -it <flu_jupyter container id> airflow db init
-   ```
-
-2. Start Webserver
-   
-   ```bash
-   docker exec -it <flu_jupyter container id> airflow webserver
-   ```
-3. Start Scheduler
-   
-   ```bash
-    docker exec -it <flu_jupyter container id> airflow scheduler
-   ```
-4. Log-In to Airflow
-   
-   Go to: http://localhost:8080
-   
-   username: admin / password: admin
-   
-
 ## Project Architecture
 
 ```
