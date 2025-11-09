@@ -23,7 +23,7 @@ This starts:
 - ✅ Create PostgreSQL database tables
 - ✅ Load all data into the database
    ```
-D. Log-In to Airflow
+D. Log-In to Airflow (If website doesn't show up please give it 30 - 1 min after container is created to start up)
 
    Go to: http://localhost:8080
 
