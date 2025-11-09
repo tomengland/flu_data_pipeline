@@ -20,27 +20,58 @@ services:
       timeout: 5s
       retries: 5
 
-  jupyter:
+  airflow-webserver:
     build: .
-    container_name: flu_jupyter
+    container_name: flu_airflow_webserver
     command: >
       bash -c "
-        echo 'Initializing Airflow DB...' &&
         airflow db init &&
-        echo 'Waiting for DB to be ready...' &&
-        sleep 10 &&
-        echo 'Creating admin user...' &&
-        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin && echo 'Admin user created successfully!' || echo 'Admin user creation failed or already exists' &&
-        echo 'Starting Airflow webserver...' &&
-        airflow webserver --port 8080 &
-        echo 'Starting Airflow scheduler...' &&
-        airflow scheduler &
-        echo 'Starting Jupyter Lab...' &&
-        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=flutoken --NotebookApp.allow_origin='*' --NotebookApp.disable_check_xsrf=True
+        airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin 2>/dev/null || echo 'User exists' &&
+        airflow webserver --port 8080
       "
     ports:
-      - "8888:8888"
       - "8080:8080"
+    environment:
+      - AIRFLOW_HOME=/app/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://fluuser:flupass@postgres:5432/flu_database
+      - AIRFLOW__WEBSERVER__SECRET_KEY=flu_data_pipeline_2025
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flu_network
+    restart: always
+
+  airflow-scheduler:
+    build: .
+    container_name: flu_airflow_scheduler
+    command: airflow scheduler
+    environment:
+      - AIRFLOW_HOME=/app/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://fluuser:flupass@postgres:5432/flu_database
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flu_network
+    restart: always
+
+  jupyter-notebook:
+    build: .
+    container_name: flu_jupyter_notebook
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=flutoken --NotebookApp.allow_origin='*' --NotebookApp.disable_check_xsrf=True
+    ports:
+      - "8888:8888"
     volumes:
       - .:/app
     environment:
@@ -48,16 +79,12 @@ services:
       - POSTGRES_USER=fluuser
       - POSTGRES_PASSWORD=flupass
       - POSTGRES_DB=flu_database
-      - AIRFLOW_HOME=/app/airflow
-      - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://fluuser:flupass@postgres:5432/flu_database
-      - AIRFLOW__WEBSERVER__SECRET_KEY=flu_data_pipeline_2025
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - flu_network
+    restart: always
 
   flask-api:
     build: .
@@ -78,6 +105,7 @@ services:
         condition: service_healthy
     networks:
       - flu_network
+    restart: always
 
 networks:
   flu_network:
