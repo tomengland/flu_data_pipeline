@@ -21,41 +21,41 @@ services:
       retries: 5
 
   jupyter:
-  build: .
-  container_name: flu_jupyter
-  command: >
-    bash -c "
-      airflow db init &&
-      airflow users create \
-        --username admin \
-        --firstname Admin \
-        --lastname User \
-        --role Admin \
-        --email admin@example.com \
-        --password admin 2>/dev/null || echo 'Admin user already exists' &&
-      airflow webserver --port 8080 &
-      airflow scheduler &
-      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=flutoken --NotebookApp.allow_origin='*' --NotebookApp.disable_check_xsrf=True
-    "
-  ports:
-    - "8888:8888"
-    - "8080:8080"
-  volumes:
-    - .:/app
-  environment:
-    - POSTGRES_HOST=postgres
-    - POSTGRES_USER=fluuser
-    - POSTGRES_PASSWORD=flupass
-    - POSTGRES_DB=flu_database
-    - AIRFLOW_HOME=/app/airflow
-    - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
-    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://fluuser:flupass@postgres:5432/flu_database
-  depends_on:
-    postgres:
-      condition: service_healthy
-  networks:
-    - flu_network
+    build: .
+    container_name: flu_jupyter
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create \
+          --username admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com \
+          --password admin 2>/dev/null || echo 'Admin user already exists' &&
+        airflow webserver --port 8080 &
+        airflow scheduler &
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=flutoken --NotebookApp.allow_origin='*' --NotebookApp.disable_check_xsrf=True
+      "
+    ports:
+      - "8888:8888"
+      - "8080:8080"
+    volumes:
+      - .:/app
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=fluuser
+      - POSTGRES_PASSWORD=flupass
+      - POSTGRES_DB=flu_database
+      - AIRFLOW_HOME=/app/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/app/dags
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://fluuser:flupass@postgres:5432/flu_database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flu_network
 
   flask-api:
     build: .
