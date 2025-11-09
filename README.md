@@ -35,9 +35,7 @@ E. Airflow will automate the entire data pipeline from start to finish and is de
 
 ### 3. View the Dashboard
 
-```bash
-"$BROWSER" http://localhost:5001/viewer
-```
+http://localhost:5001/viewer
 
 The dashboard provides:
 - 📈 **Weekly Trends**: Real-time flu activity by week
