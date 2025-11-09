@@ -14,7 +14,7 @@ This starts:
 - Jupyter Notebook (port 8888)
 - Flask API Dashboard (port 5001)
 
-### 2. Run Data Collection, process and clean from Airflow.
+### 2. Process data through airflow
 
 - ✅ Download WA DOH RHINO data
 - ✅ Download Census population data
@@ -33,7 +33,7 @@ D. Log-In to Airflow
 
 E. Airflow will automate the entire data pipeline from start to finish and is designed to execute another pull Daily or as otherwise specified in the .py file.
 
-### 4. View the Dashboard
+### 3. View the Dashboard
 
 ```bash
 "$BROWSER" http://localhost:5001/viewer
