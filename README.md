@@ -56,8 +56,8 @@ The dashboard provides:
          │
          ▼
 ┌─────────────────┐
-│     Airflow     │  ← Run airflow
-│  Data Pipeline  │     (All cells in order)
+│     Airflow     │  ← Run airflow dag
+│  Data Pipeline  │
 └────────┬────────┘
          │
          ▼
@@ -107,9 +107,6 @@ curl "http://localhost:5001/api/export/csv?table=historics" -o historical.csv
 ```bash
 # Restart all
 docker-compose restart
-
-# Restart specific service
-docker-compose restart flask-api
 ```
 
 ### Stop Everything

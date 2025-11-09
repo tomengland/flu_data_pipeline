@@ -31,6 +31,7 @@ default_args = {
     'retry_delay': timedelta(minutes=1)
 }
 
+
 #################### RHINO Data Collection Function ###############
 
 @task
@@ -743,7 +744,7 @@ def ingest_sql_data(temporal_path, illness_path, healthcare_path, historic_path,
 
 # Create Airflow DAG
 
-with DAG('setup_flu_data', default_args=default_args, schedule_interval='@daily') as setup_dag:
+with DAG('setup_flu_data', default_args=default_args, schedule_interval='@daily', catchup=False) as setup_dag:
     # Define DAG tasks and dependencies
     rhino = collect_rhino_data()
     census = collect_census_data()
