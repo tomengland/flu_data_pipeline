@@ -11,6 +11,7 @@ connexion==2.14.0
 Flask-Session==0.4.0
 python-slugify==8.0.1
 markdown==3.4.4
+pyarrow==14.0.2
 
 
 # API and Web (compatible with Airflow)
