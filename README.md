@@ -14,56 +14,24 @@ This starts:
 - Jupyter Notebook (port 8888)
 - Flask API Dashboard (port 5001)
 
-### 2. Run Data Collection
+### 2. Run Data Collection, process and clean from Airflow.
 
-#### Access Jupyter Notebook
-```bash
-# Get the Jupyter access token
-docker-compose logs jupyter | grep "http://127.0.0.1:8888/lab?token="
-
-# Open Jupyter in browser (copy the URL from above)
-"$BROWSER" http://localhost:8888/lab?token=<your-token>
-```
-
-#### Run the Pipeline
-1. Navigate to `notebooks/collect_data.ipynb`
-2. Click **Run → Run All Cells** (or press Shift+Enter through each cell)
-3. Wait for all cells to complete (~2-3 minutes)
-
-**That's it!** The notebook will:
 - ✅ Download WA DOH RHINO data
 - ✅ Download Census population data
 - ✅ Download CDC FluView data
 - ✅ Clean and transform the data
 - ✅ Create PostgreSQL database tables
 - ✅ Load all data into the database
-
-### 3. Initialize and Access Airflow for Automation
-
-A. Initialize Airflow DB
-   ```bash
-   docker exec -it <flu_jupyter container id> airflow db init
-   ```
-
-B. Start Webserver
-   
-   ```bash
-   docker exec -it <flu_jupyter container id> airflow webserver
-   ```
-C. Start Scheduler
-   
-   ```bash
-    docker exec -it <flu_jupyter container id> airflow scheduler
    ```
 D. Log-In to Airflow
-   
+
    Go to: http://localhost:8080
-   
+
    username: admin / password: admin
 
-   The desired Airflow DAG is flu_data_airflow v2.py
+   The desired Airflow DAG is flu_data_airflow_v2.py
 
-E. Airflow will automate the entire data pipeline from start to finish and is designed to execute another pull Daily or as otherwise specified in the .py file.  
+E. Airflow will automate the entire data pipeline from start to finish and is designed to execute another pull Daily or as otherwise specified in the .py file.
 
 ### 4. View the Dashboard
 
@@ -88,7 +56,7 @@ The dashboard provides:
          │
          ▼
 ┌─────────────────┐
-│ Jupyter Notebook│  ← Run collect_data.ipynb
+│     Airflow     │  ← Run airflow
 │  Data Pipeline  │     (All cells in order)
 └────────┬────────┘
          │
@@ -156,37 +124,15 @@ docker-compose down
 docker-compose down -v
 ```
 
-## Updating Data
-
-To refresh the data with latest information:
-
-1. **Open Jupyter Notebook** (see Quick Start step 2)
-2. **Run All Cells** in `collect_data.ipynb`
-3. The notebook will automatically:
-   - Download latest data from sources
-   - Drop existing tables
-   - Recreate tables with new data
-   - Commit changes to database
-4. **Refresh the dashboard** - new data appears immediately
-
 ## Troubleshooting
 
 ### ❌ "No data available" in Dashboard
 
-**Solution**: Run the Jupyter notebook
+**Solution**: Run the airflow process once to load db with data.
 ```bash
-"$BROWSER" http://localhost:8888
-# Then run all cells in collect_data.ipynb
+"$BROWSER" http://localhost:8080
+
 ```
-
-### ❌ "relation does not exist" Error
-
-**Cause**: Database tables not created yet
-
-**Solution**: Run all cells in the Jupyter notebook, especially the cells that:
-1. Create tables (with `CREATE TABLE` statements)
-2. Load data (with `COPY` statements)
-3. Commit changes (with `conn.commit()`)
 
 ### ❌ Jupyter Token Not Working
 
@@ -207,22 +153,6 @@ netstat -an | grep 5001
 # Change port in docker-compose.yml if needed:
 # ports:
 #   - "5002:5000"  # Use 5002 instead
-```
-
-### ❌ Airflow Log-In Error
-
-```bash
-# Remove any other admin User
-docker exec -it <flu_jupyter container id> airflow users delete -u admin
-
-# Recreate Admin User
-docker exec -it <flu_jupyter container id> airflow users create \
-        --username admin \
-        --firstname Admin \
-        --lastname User \
-        --role Admin \
-        --email admin@example.com \
-        --password admin
 ```
 
 ## Data Sources
@@ -273,4 +203,4 @@ This project is for educational and public health surveillance purposes.
 
 ---
 
-**Getting Started**: Run `docker-compose up -d`, then run all cells in the Jupyter notebook!
+**Getting Started**: Run `docker-compose up -d`, then run Airflow DAG.
