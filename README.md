@@ -14,6 +14,8 @@ This starts:
 - Jupyter Notebook (port 8888)
 - Flask API Dashboard (port 5001)
 
+The data gathering, data cleaning, and SQL ingesting are all done through airflow process.
+
 ### 2. Process data through airflow
 
 - ✅ Download WA DOH RHINO data
