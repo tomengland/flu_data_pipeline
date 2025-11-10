@@ -41,7 +41,10 @@ D. Log-In to Airflow (If website doesn't show up please give it 30 seconds to 1 
 
    The desired Airflow DAG is flu_data_airflow_v2.py
 
-E. Airflow will automate the entire data pipeline from start to finish and is designed to execute another pull Daily or as otherwise specified in the .py file.
+E. Airflow will automate the entire data pipeline from start to finish and is designed to execute another pull Daily or as otherwise specified in the .py file.  To get it working, trigger the DAG.
+
+
+<img width="1180" height="586" alt="DAG trigger" src="https://i.imgur.com/6WMredz.png" />
 
 ### 3. View the Dashboard
 
