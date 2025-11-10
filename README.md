@@ -14,18 +14,26 @@ This starts:
 - Jupyter Notebook (port 8888)
 - Flask API Dashboard (port 5001)
 
-The data gathering, data cleaning, and SQL ingesting are all done through airflow process.
+The data gathering, data cleaning, and SQL ingesting are all done through airflow process.  The two important folders in the project folder are below.
+
+```bash
+/api
+  |--- app.py  [Flask Server]
+/dags
+  |--- flu_data_airflow_v2.py   [Airflow DAG, but also houses data gathering, ingesting, and cleaning code along with SQL injection]
+
+```
 
 ### 2. Process data through airflow
 
-- ✅ Download WA DOH RHINO data
-- ✅ Download Census population data
-- ✅ Download CDC FluView data
-- ✅ Clean and transform the data
-- ✅ Create PostgreSQL database tables
-- ✅ Load all data into the database
-   ```
-D. Log-In to Airflow (If website doesn't show up please give it 30 - 1 min after container is created to start up)
+- ✅ Download WA DOH RHINO data - flu_data_airflow_v2.py
+- ✅ Download Census population data - flu_data_airflow_v2.py
+- ✅ Download CDC FluView data - flu_data_airflow_v2.py
+- ✅ Clean and transform the data - flu_data_airflow_v2.py
+- ✅ Create PostgreSQL database tables - flu_data_airflow_v2.py
+- ✅ Load all data into the database - flu_data_airflow_v2.py
+
+D. Log-In to Airflow (If website doesn't show up please give it 30 seconds to 1 min after container is created to start up)
 
    Go to: http://localhost:8080
 
