@@ -14,13 +14,16 @@ This starts:
 - Jupyter Notebook (port 8888)
 - Flask API Dashboard (port 5001)
 
-The data gathering, data cleaning, and SQL ingesting are all done through airflow process.  The two important folders in the project folder are below.
+The data gathering, data cleaning, and SQL ingesting are all done through airflow process.  In addition to this readme, the important folders in the project folder are below for finding the course project requirement files.
 
 ```bash
 /api
   |--- app.py  [Flask Server]
 /dags
   |--- flu_data_airflow_v2.py   [Airflow DAG, but also houses data gathering, ingesting, and cleaning code along with SQL injection]
+/documentation
+  |--- Entity Relationship Diagram (PDF)
+  |--- Project Documentation (PDF)
 
 ```
 
